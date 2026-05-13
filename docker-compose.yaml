@@ -1,0 +1,70 @@
+services:
+  backend:
+    build:
+      context: ./backend
+
+    container_name: backend
+
+    working_dir: /app
+
+    command: >
+      uvicorn main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+
+    env_file:
+      - ./backend/.env
+
+    environment:
+      PYTHONPATH: /app
+
+    volumes:
+      - ./backend:/app
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    networks:
+      - inventory_network
+  postgres:
+    image: postgres:17-alpine
+
+    container_name: postgres
+
+    restart: always
+
+    ports:
+      - "5432:5432"
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: inventory
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U postgres -d inventory"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+    networks:
+      - inventory_network
+
+volumes:
+  postgres_data:
+
+networks:
+  inventory_network:
