@@ -1,9 +1,9 @@
-from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.manager.v1.logs.create.service import AuditLogService
 from src.api.manager.v1.products.create.schemas import ProductCreateInSchema
+from src.api.manager.v1.products.exceptions import ProductAlreadyExists
 from src.models.entities.product import Product
 from src.models.enums.action_type import ActionType
 from src.models.enums.entity_type import EntityType
@@ -18,7 +18,7 @@ class ProductCreateService:
         existing_product = result.scalar_one_or_none()
 
         if existing_product:
-            raise HTTPException(status_code=400, detail="Product already exists")
+            raise ProductAlreadyExists()
 
         new_product = Product(**product.model_dump())
 

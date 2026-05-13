@@ -1,9 +1,9 @@
 from uuid import UUID
 
-from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.manager.v1.products.exceptions import ProductNotFound
 from src.models.entities.product import Product
 
 
@@ -15,8 +15,5 @@ class ProductGetService:
         result = await session.execute(query)
         product = result.scalar_one_or_none()
         if not product:
-            raise HTTPException(
-                status_code=404,
-                detail="Product not found",
-            )
+            raise ProductNotFound()
         return product

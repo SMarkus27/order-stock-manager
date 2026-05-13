@@ -1,9 +1,9 @@
 from uuid import UUID
 
-from fastapi import HTTPException
 from sqlalchemy import select
 
 from src.api.manager.v1.logs.create.service import AuditLogService
+from src.api.manager.v1.products.exceptions import ProductNotFound
 from src.models.entities.product import Product
 from src.models.enums.action_type import ActionType
 from src.models.enums.entity_type import EntityType
@@ -18,7 +18,7 @@ class ProductUpdateService:
         product = result.scalar_one_or_none()
 
         if not product:
-            raise HTTPException(status_code=404, detail="Product not found")
+            raise ProductNotFound()
 
         update_data = new_data.model_dump(exclude_unset=True)
 

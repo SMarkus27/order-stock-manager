@@ -1,11 +1,12 @@
 from decimal import Decimal
-from http.client import HTTPException
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.manager.v1.logs.create.service import AuditLogService
 from src.api.manager.v1.order.create.schemas import OrderCreate
+from src.api.manager.v1.order.exceptions import EmptyOrder
+from src.api.manager.v1.products.exceptions import ProductNotFound, ProductOutOfStock
 from src.models.entities.order import Order
 from src.models.entities.order_item import OrderItem
 from src.models.entities.product import Product
@@ -18,9 +19,7 @@ class OrderService:
     async def create(session: AsyncSession, order_data: OrderCreate):
 
         if not order_data.items:
-            raise HTTPException(
-                status_code=400, detail="Order must have at least one item"
-            )
+            raise EmptyOrder()
 
         order = Order()
         session.add(order)
@@ -35,43 +34,38 @@ class OrderService:
         products_map = {p.external_id: p for p in products}
 
         order_items = []
-        total_amount = Decimal("0.00")  # 🔥 FIX
-
+        total_amount = Decimal("0.00")
         for item in order_data.items:
             product = products_map.get(item.product_external_id)
 
             if not product:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Product {item.product_external_id} not found",
+                raise ProductNotFound(
+                    detail=f"Product {item.product_external_id} not found"
                 )
 
             if product.stock_quantity < item.quantity:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Insufficient stock for product {product.id}",
-                )
+                raise ProductOutOfStock(product.id)
 
         for item in order_data.items:
             product = products_map[item.product_external_id]
 
             product.stock_quantity -= item.quantity
 
-            subtotal = product.price * item.quantity  # 🔥 FIX TOTAL LINE
+            subtotal = product.price * item.quantity
 
             order_item = OrderItem(
                 order=order,
                 product_id=product.id,
                 quantity=item.quantity,
                 unit_price=product.price,
-                subtotal=subtotal,  # importante
+                subtotal=subtotal,
             )
 
             order_items.append(order_item)
 
-            total_amount += subtotal  # 🔥 acumulando total
+            total_amount += subtotal
 
-        order.total_amount = total_amount  # 🔥 FIX FINAL
+        order.total_amount = total_amount
 
         session.add_all(order_items)
 
